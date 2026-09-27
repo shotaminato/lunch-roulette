@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ランチルーレット</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  body {
+    font-family: sans-serif;
+    background: #fff8ee;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px 32px;
+    margin: 0;
+    min-height: 100dvh;
+  }
+  h1 { margin: 8px 0 16px; font-size: clamp(1.35rem, 6vw, 2rem); text-align: center; }
+  #wheel { width: 100%; height: auto; display: block; transition: transform 4s cubic-bezier(.17,.67,.2,1); }
+  .wrap {
+    position: relative;
+    width: min(320px, calc(100vw - 32px));
+    aspect-ratio: 1;
+  }
+  .pointer {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 26px solid #e33;
+    z-index: 2;
+  }
+  button {
+    font-size: 18px;
+    padding: 10px 28px;
+    border: none;
+    border-radius: 24px;
+    background: #ff7a00;
+    color: #fff;
+    cursor: pointer;
+    margin: 16px 0;
+  }
+  button:disabled { background: #bbb; }
+  #result {
+    font-size: clamp(18px, 5.5vw, 26px);
+    font-weight: bold;
+    min-height: 36px;
+    text-align: center;
+    word-break: break-word;
+    max-width: 100%;
+    padding: 0 8px;
+  }
+  .add {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    width: min(320px, 100%);
+  }
+  .add input {
+    flex: 1;
+    min-width: 0;
+    font-size: 16px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+  .add button { margin: 0; font-size: 16px; padding: 8px 16px; flex-shrink: 0; }
+  ul { list-style: none; padding: 0; width: min(300px, 100%); margin: 8px 0 0; }
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    padding: 8px 12px;
+    margin: 4px 0;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px #0001;
+  }
+  li .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  li span.x { cursor: pointer; color: #999; flex-shrink: 0; padding: 4px 6px; }
+</style>
+</head>
+<body>
+<h1>🍱 ランチルーレット</h1>
+<div class="wrap"><div class="pointer"></div><canvas id="wheel" width="320" height="320"></canvas></div>
+<button id="spin">まわす！</button>
+<div id="result"></div>
+<div class="add"><input id="item" placeholder="候補を追加（例：ラーメン）"><button id="addBtn">追加</button></div>
+<ul id="list"></ul>
+<script>
+const KEY = 'lunch-roulette-items';
+const DEFAULTS = ['ラーメン','カレー','定食','パスタ','寿司','ハンバーガー'];
+function loadItems(){
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (Array.isArray(raw) && raw.length && raw.every(x => typeof x === 'string')) return raw;
+  } catch (e) {}
+  return DEFAULTS.slice();
+}
+let items = loadItems();
+let rotation = 0;
+const cv = document.getElementById('wheel'), ctx = cv.getContext('2d');
+const colors = ['#ffb347','#ff6961','#77dd77','#84b6f4','#fdfd96','#cfa0e9','#ffd1dc','#aec6cf'];
+function save(){ localStorage.setItem(KEY, JSON.stringify(items)); }
+function draw(){
+  ctx.clearRect(0,0,320,320);
+  const n = items.length;
+  if(!n){ ctx.fillStyle='#999'; ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.fillText('候補を追加してね',160,160); return; }
+  const a = 2*Math.PI/n;
+  items.forEach((t,i)=>{
+    const start = i*a - Math.PI/2;
+    const mid = start + a/2;
+    const label = t.length>8 ? t.slice(0,8)+'…' : t;
+    ctx.beginPath(); ctx.moveTo(160,160); ctx.arc(160,160,155,start,start+a);
+    ctx.fillStyle=colors[i%colors.length]; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    ctx.save();
+    ctx.translate(160,160);
+    ctx.rotate(mid);
+    ctx.fillStyle='#333';
+    ctx.font='bold 15px sans-serif';
+    if (Math.cos(mid) < 0) {
+      ctx.rotate(Math.PI);
+      ctx.textAlign='left';
+      ctx.fillText(label,-140,5);
+    } else {
+      ctx.textAlign='right';
+      ctx.fillText(label,140,5);
+    }
+    ctx.restore();
+  });
+}
+function renderList(){
+  const ul=document.getElementById('list'); ul.innerHTML='';
+  items.forEach((t,i)=>{
+    const li=document.createElement('li');
+    const name=document.createElement('span'); name.className='name'; name.textContent=t;
+    const x=document.createElement('span'); x.className='x'; x.textContent='✕';
+    x.onclick=()=>{ items.splice(i,1); save(); refresh(); };
+    li.appendChild(name); li.appendChild(x); ul.appendChild(li);
+  });
+  document.getElementById('spin').disabled = items.length<2;
+}
+function refresh(){ draw(); renderList(); }
+function add(){ const inp=document.getElementById('item'); const v=inp.value.trim(); if(v){ items.push(v); save(); refresh(); } inp.value=''; inp.focus(); }
+document.getElementById('addBtn').onclick=add;
+document.getElementById('item').addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.isComposing) add(); });
+document.getElementById('spin').onclick=()=>{
+  const n=items.length, idx=Math.floor(Math.random()*n), a=360/n;
+  const target = 360 - (idx*a + a/2);
+  rotation += 360*5 + ((target - rotation%360) + 360) % 360;
+  const btn=document.getElementById('spin'); btn.disabled=true; document.getElementById('result').textContent='';
+  cv.style.transform=`rotate(${rotation}deg)`;
+  setTimeout(()=>{ document.getElementById('result').textContent=`今日は「${items[idx]}」に決定！🎉`; btn.disabled=false; },4100);
+};
+refresh();
+</script>
+</body>
+</html>
