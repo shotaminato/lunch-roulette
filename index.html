@@ -116,11 +116,25 @@ function draw(){
   if(!n){ ctx.fillStyle='#999'; ctx.font='16px sans-serif'; ctx.textAlign='center'; ctx.fillText('候補を追加してね',160,160); return; }
   const a = 2*Math.PI/n;
   items.forEach((t,i)=>{
-    ctx.beginPath(); ctx.moveTo(160,160); ctx.arc(160,160,155,i*a-Math.PI/2,(i+1)*a-Math.PI/2);
+    const start = i*a - Math.PI/2;
+    const mid = start + a/2;
+    const label = t.length>8 ? t.slice(0,8)+'…' : t;
+    ctx.beginPath(); ctx.moveTo(160,160); ctx.arc(160,160,155,start,start+a);
     ctx.fillStyle=colors[i%colors.length]; ctx.fill(); ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
-    ctx.save(); ctx.translate(160,160); ctx.rotate(i*a+a/2-Math.PI/2);
-    ctx.fillStyle='#333'; ctx.font='bold 15px sans-serif'; ctx.textAlign='right';
-    ctx.fillText(t.length>8?t.slice(0,8)+'…':t,140,5); ctx.restore();
+    ctx.save();
+    ctx.translate(160,160);
+    ctx.rotate(mid);
+    ctx.fillStyle='#333';
+    ctx.font='bold 15px sans-serif';
+    if (Math.cos(mid) < 0) {
+      ctx.rotate(Math.PI);
+      ctx.textAlign='left';
+      ctx.fillText(label,-140,5);
+    } else {
+      ctx.textAlign='right';
+      ctx.fillText(label,140,5);
+    }
+    ctx.restore();
   });
 }
 function renderList(){
